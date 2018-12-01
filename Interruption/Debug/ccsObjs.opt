@@ -1,0 +1,1 @@
+"./Interrupts exercise 2.obj" "./Interrupts exercise 3.obj" "../lnk_msp430g2553.cmd" -llibc.a 
