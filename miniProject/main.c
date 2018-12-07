@@ -81,7 +81,7 @@ unsigned int ADC_Buffer_Size = DEFAULT_ADC_BUFFER_SIZE;
 unsigned int ADC_Buffer[MAX_ADC_BUFFER_SIZE];
 
 volatile char RX_char;
-volatile enum {MEASTEMP, MEASVDD} measmode;
+volatile int temp;
 volatile enum {a,s} startflg;
 volatile struct {
     unsigned int RX_Received    :1;
@@ -109,7 +109,6 @@ void main(void) {
     DCOCTL = CALDCO_1MHZ;
 
     //Initialize ADC
-    measmode = MEASTEMP;
     startflg = a;
     ADC10CTL1 = INCH_10 + ADC10DIV_3 + SHS_1 + CONSEQ_2;                // Temp Sensor, ADC10CLK div: /4, S/H source: Timer_A.OUT1, Repeat-single-channel
     ADC10CTL0 = SREF_1 + ADC10SHT_3 + MSC + REFON + ADC10ON + ADC10IE;  //S/H 64*ADC10CLKs, ADC10CLK source: ADC10OSC ~5NHz
@@ -142,7 +141,12 @@ void main(void) {
     ADC10DTC1 = ADC_Buffer_Size;
     ADC10SA = (unsigned int)(ADC_Buffer);       //block start address
 
-    ADC10CTL0 |= ENC;
+    //ADC10CTL0 |= ENC;
+    /*---add ---*/
+    ADC10CTL0 |= ENC+ ADC10SC;
+
+    /*----add ---*/
+
     TACCTL1 |= CCIE;                            // Compare-mode interrupt
 
     UART_puts("MSP430 mini project. Start program, enter [s] \r\n");
@@ -158,7 +162,8 @@ void main(void) {
         }
 
         ADC10SA = (unsigned int)(ADC_Buffer);       //
-        ADC10CTL0 |= ENC;                           //ADC10 enable
+        //ADC10CTL0 |= ENC;                           //ADC10 enable
+        ADC10CTL0 |= ENC+ADC10SC;
         P1OUT &= ~(LED_RED);                        // Turn LED off
 
     }
@@ -185,25 +190,26 @@ void Process_Command(char Command_char){
              UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
 
         }else if (Command_char == 't' ){
-            //Temprature info should get
-            UART_puts("Temprature information has been choosed \r\n");
-            IntDegC = ((ADC_Buffer_Sum() - 673 * ADC_Buffer_Size) * 4225) / 1024 / ADC_Buffer_Size;
+            UART_puts("Temperature information has been choosed \r\n");
+            temp = ADC10MEM;
+            IntDegC = (int) ((temp * 27069L - 18169625L) >> 16);
             UART_puts( outdata(IntDegC,"C\r\n",buffer));
 
         }else if (Command_char == 'b' ){
            //Both Temprature and Volate info should get
-            UART_puts("Voltage and Temprature information has been choosed \r\n");
+            UART_puts("Voltage and temperature information has been choosed \r\n");
+            temp = ADC10MEM;
             IntVoltmV = ADC_Buffer_Sum() * 5000 / 1024 / ADC_Buffer_Size;
-            IntDegC = ((ADC_Buffer_Sum() - 673 * ADC_Buffer_Size) * 4225) / 1024 / ADC_Buffer_Size;
+            IntDegC = (int) ((temp * 27069L - 18169625L) >> 16);
             UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
             UART_puts( outdata(IntDegC,"C\r\n",buffer));
    }
    if (Command_char == 's' ){
        if (msgflg==0){
            UART_puts("Start a program ! \r\n");
-           UART_puts("Press [v] to show volatge\r\n");
-           UART_puts("Press [t] to show temprature\r\n");
-           UART_puts("Press [b] to show both volatge and temprature\r\n");
+           UART_puts("Press [v] to show voltage\r\n");
+           UART_puts("Press [t] to show temperature\r\n");
+           UART_puts("Press [b] to show both voltage and temperature\r\n");
            msgflg=1;
        }
   }
