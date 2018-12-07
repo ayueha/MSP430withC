@@ -87,6 +87,7 @@ volatile struct {
     unsigned int RX_Received    :1;
 } Flags;
 
+volatile unsigned int msgflg;
 
 //function prototypes
 void UART_puts(char * s);                               //
@@ -109,6 +110,7 @@ void main(void) {
 
     //Initialize ADC
     measmode = MEASTEMP;
+    startflg = a;
     ADC10CTL1 = INCH_10 + ADC10DIV_3 + SHS_1 + CONSEQ_2;                // Temp Sensor, ADC10CLK div: /4, S/H source: Timer_A.OUT1, Repeat-single-channel
     ADC10CTL0 = SREF_1 + ADC10SHT_3 + MSC + REFON + ADC10ON + ADC10IE;  //S/H 64*ADC10CLKs, ADC10CLK source: ADC10OSC ~5NHz
     TACCR0 = 30;                              // Delay to allow Ref to settle
@@ -142,39 +144,23 @@ void main(void) {
 
     ADC10CTL0 |= ENC;
     TACCTL1 |= CCIE;                            // Compare-mode interrupt
+
+    UART_puts("MSP430 mini project. Start program, enter [s] \r\n");
+
     while(1) {
         __bis_SR_register(CPUOFF + GIE);        // LPM0 with interrupts enabled
 
-        P1OUT |= LED_RED;
-        /*switch (measmode) {
-        case MEASTEMP :
-            IntDegC = ((ADC_Buffer_Sum() - 673 * ADC_Buffer_Size) * 4225) / 1024 / ADC_Buffer_Size;
-            UART_puts( outdata(IntDegC,"C\r\n",buffer));
-            // Configure ADC
-            ADC10CTL1 = INCH_11 + ADC10DIV_3 + SHS_1 + CONSEQ_2;
-            ADC10CTL0 |= REF2_5V;
-            measmode = MEASVDD;
-            break;
-        case MEASVDD:
-            IntVoltmV = ADC_Buffer_Sum() * 5000 / 1024 / ADC_Buffer_Size;
-            UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
-            // Configure ADC
-            ADC10CTL1 = INCH_10 + ADC10DIV_3 + SHS_1 + CONSEQ_2;
-            ADC10CTL0 &= ~REF2_5V;
-            measmode = MEASTEMP;
-            break;
-        }*/
-        while (startflg==s){
-            if (Flags.RX_Received) {
-                Flags.RX_Received = 0;                  //Clear Flag
-                Process_Command(RX_char);
-            }
-            ADC10SA = (unsigned int)(ADC_Buffer);       //
-            ADC10CTL0 |= ENC;                           //ADC10 enable
 
-            P1OUT &= ~(LED_RED);                        // Turn LED off
-            // __no_operation();                        // SET BREAKPOINT HERE
+       if (Flags.RX_Received) {
+            P1OUT |= LED_RED;
+            Flags.RX_Received = 0;                  //Clear Flag
+               Process_Command(RX_char);
         }
+
+        ADC10SA = (unsigned int)(ADC_Buffer);       //
+        ADC10CTL0 |= ENC;                           //ADC10 enable
+        P1OUT &= ~(LED_RED);                        // Turn LED off
+
     }
 
 }
@@ -212,6 +198,15 @@ void Process_Command(char Command_char){
             UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
             UART_puts( outdata(IntDegC,"C\r\n",buffer));
    }
+   if (Command_char == 's' ){
+       if (msgflg==0){
+           UART_puts("Start a program ! \r\n");
+           UART_puts("Press [v] to show volatge\r\n");
+           UART_puts("Press [t] to show temprature\r\n");
+           UART_puts("Press [b] to show both volatge and temprature\r\n");
+           msgflg=1;
+       }
+  }
 }
 
 
