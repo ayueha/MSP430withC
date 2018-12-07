@@ -9,21 +9,21 @@ CMD_SRCS += \
 ../lnk_msp430g2553.cmd 
 
 C_SRCS += \
-../7343.main.c 
+../main.c 
 
 C_DEPS += \
-./7343.main.d 
+./main.d 
 
 OBJS += \
-./7343.main.obj 
+./main.obj 
 
 OBJS__QUOTED += \
-"7343.main.obj" 
+"main.obj" 
 
 C_DEPS__QUOTED += \
-"7343.main.d" 
+"main.d" 
 
 C_SRCS__QUOTED += \
-"../7343.main.c" 
+"../main.c" 
 
 

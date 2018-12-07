@@ -10,7 +10,7 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
-"./7343.main.obj" \
+"./main.obj" \
 "../lnk_msp430g2553.cmd" \
 $(GEN_CMDS__FLAG) \
 -llibc.a \
@@ -154,8 +154,8 @@ miniProject.hex: $(EXE_OUTPUTS)
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "7343.main.obj" 
-	-$(RM) "7343.main.d" 
+	-$(RM) "main.obj" 
+	-$(RM) "main.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
