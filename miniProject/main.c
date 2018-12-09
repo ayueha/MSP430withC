@@ -81,10 +81,10 @@ unsigned int ADC_Buffer_Size = DEFAULT_ADC_BUFFER_SIZE;
 unsigned int ADC_Buffer[MAX_ADC_BUFFER_SIZE];
 
 volatile char RX_char;
-volatile int temp;
-volatile enum {a,s} startflg;
+volatile int temp;   //temprature information
+volatile enum {a,s} startflg; //startflg
 volatile struct {
-    unsigned int RX_Received    :1;
+    unsigned int RX_Received    :1;  //fifo uart flg
 } Flags;
 
 volatile unsigned int msgflg;
@@ -94,6 +94,8 @@ void UART_puts(char * s);                               //
 char * outdata(long data,char * unit, char * result);   //
 long ADC_Buffer_Sum (void);                             //
 void Process_Command(char Command_char);                //
+int volatgecalc();                                      //
+int tempcalc();                                         //
 
 void main(void) {
 
@@ -216,6 +218,8 @@ void Process_Command(char Command_char){
 }
 
 
+
+
 long ADC_Buffer_Sum(void){
     long Sum = 0;
     unsigned int i;
@@ -258,6 +262,16 @@ char * outdata(long data,char * unit, char * result ){
 
     return result;
 }
+
+int volatgecalc(){
+
+}
+
+
+int tempcalc(){
+
+}
+
 
 // ADC10 interrupt service routine
 #pragma vector=ADC10_VECTOR
