@@ -68,23 +68,23 @@
 #include  "msp430g2553.h"
 #include <stdio.h>
 
-#define LED_RED BIT0
+#define LED_RED BIT0                    //LED red variable init bit 0
 #define LED_GRE BIT6
-#define LEDs    LED_RED + LED_GRE
+//#define LEDs    LED_RED + LED_GRE
 #define MAX_ADC_BUFFER_SIZE 32          //Maximum number of transfers for a block
 #define DEFAULT_ADC_BUFFER_SIZE 8       //Default number of transfers for a block
 
-long IntVoltmV;
-long IntDegC;
+long IntVoltmV; //Voltage info variable
+long IntDegC;   //Temperature info variable
 char buffer[10];
-unsigned int ADC_Buffer_Size = DEFAULT_ADC_BUFFER_SIZE;
+unsigned int ADC_Buffer_Size = DEFAULT_ADC_BUFFER_SIZE; //8
 unsigned int ADC_Buffer[MAX_ADC_BUFFER_SIZE];
 
 volatile char RX_char;
-volatile int temp;   //temprature information
-volatile enum {a,s} startflg; //startflg
+volatile int temp;            //Temperature information as return value
+
 volatile struct {
-    unsigned int RX_Received    :1;  //fifo uart flg
+    unsigned int RX_Received    :1;  //fifo uart flag
 } Flags;
 
 volatile unsigned int msgflg;
@@ -94,8 +94,8 @@ void UART_puts(char * s);                               //
 char * outdata(long data,char * unit, char * result);   //
 long ADC_Buffer_Sum (void);                             //
 void Process_Command(char Command_char);                //
-int volatgecalc();                                      //
-int tempcalc();                                         //
+int volatgecalc();                                      //return voltage information function
+int tempcalc();                                         //return temperature information function
 
 void main(void) {
 
@@ -111,7 +111,6 @@ void main(void) {
     DCOCTL = CALDCO_1MHZ;
 
     //Initialize ADC
-    startflg = a;
     ADC10CTL1 = INCH_10 + ADC10DIV_3 + SHS_1 + CONSEQ_2;                // Temp Sensor, ADC10CLK div: /4, S/H source: Timer_A.OUT1, Repeat-single-channel
     ADC10CTL0 = SREF_1 + ADC10SHT_3 + MSC + REFON + ADC10ON + ADC10IE;  //S/H 64*ADC10CLKs, ADC10CLK source: ADC10OSC ~5NHz
     TACCR0 = 30;                              // Delay to allow Ref to settle
@@ -138,16 +137,12 @@ void main(void) {
     IE2 |= UCA0RXIE;                            // Enable USCI_A0 RX interrupt
 
     //Initialize LED_RED LED_GRE
-    P1DIR |= LED_RED + LED_GRE;                 // Direction: output
+    P1DIR |= LED_RED;                           // Direction: output
 
-    ADC10DTC1 = ADC_Buffer_Size;
-    ADC10SA = (unsigned int)(ADC_Buffer);       //block start address
-
-    //ADC10CTL0 |= ENC;
-    /*---add ---*/
+    ADC10DTC1 = ADC_Buffer_Size;                //set Buffer size of voltage and Temperature
+    ADC10SA = (unsigned int)(ADC_Buffer);       //block start address, cast information to "unsigend int".
     ADC10CTL0 |= ENC+ ADC10SC;
 
-    /*----add ---*/
 
     TACCTL1 |= CCIE;                            // Compare-mode interrupt
 
@@ -156,17 +151,16 @@ void main(void) {
     while(1) {
         __bis_SR_register(CPUOFF + GIE);        // LPM0 with interrupts enabled
 
-
+       //if a micro-controller recived a letter from UART
        if (Flags.RX_Received) {
-            P1OUT |= LED_RED;
+            P1OUT |= LED_RED;                       //if UART info has been inputed from key board
             Flags.RX_Received = 0;                  //Clear Flag
-               Process_Command(RX_char);
+               Process_Command(RX_char);            //UART show info , depending on user inputs,
         }
 
-        ADC10SA = (unsigned int)(ADC_Buffer);       //
-        //ADC10CTL0 |= ENC;                           //ADC10 enable
+        ADC10SA = (unsigned int)(ADC_Buffer);
         ADC10CTL0 |= ENC+ADC10SC;
-        P1OUT &= ~(LED_RED);                        // Turn LED off
+        P1OUT &= ~(LED_RED);
 
     }
 
@@ -176,44 +170,39 @@ void main(void) {
 // function definitions
 //-------------------------------------------------
 void Process_Command(char Command_char){
-    if (Command_char >= '0' && Command_char <='5'){
-        ADC_Buffer_Size = (1u<<(Command_char - '0'));   //
-        ADC10DTC1 = ADC_Buffer_Size;
-        UART_puts(outdata(ADC_Buffer_Size,"X\r\n",buffer));
-    }
 
-    if (Command_char == '9'){
-        UART_puts(outdata(ADC_Buffer_Size,"X\r\n",buffer));
-    }
+    if (Command_char == 'v' && msgflg==1){
 
-    if (Command_char == 'v' ){
              UART_puts("Voltage information has been choosed \r\n");
-             IntVoltmV = ADC_Buffer_Sum() * 5000 / 1024 / ADC_Buffer_Size;
+             IntVoltmV = volatgecalc();
              UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
 
-        }else if (Command_char == 't' ){
+        }else if (Command_char == 't' && msgflg==1){
+
             UART_puts("Temperature information has been choosed \r\n");
             temp = ADC10MEM;
-            IntDegC = (int) ((temp * 27069L - 18169625L) >> 16);
+            IntDegC = tempcalc();
             UART_puts( outdata(IntDegC,"C\r\n",buffer));
 
-        }else if (Command_char == 'b' ){
-           //Both Temprature and Volate info should get
+        }else if (Command_char == 'b' && msgflg==1){
+
             UART_puts("Voltage and temperature information has been choosed \r\n");
             temp = ADC10MEM;
-            IntVoltmV = ADC_Buffer_Sum() * 5000 / 1024 / ADC_Buffer_Size;
-            IntDegC = (int) ((temp * 27069L - 18169625L) >> 16);
+            IntVoltmV = volatgecalc();
+            IntDegC = tempcalc();
             UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
             UART_puts( outdata(IntDegC,"C\r\n",buffer));
-   }
-   if (Command_char == 's' ){
-       if (msgflg==0){
-           UART_puts("Start a program ! \r\n");
-           UART_puts("Press [v] to show voltage\r\n");
-           UART_puts("Press [t] to show temperature\r\n");
-           UART_puts("Press [b] to show both voltage and temperature\r\n");
-           msgflg=1;
-       }
+
+        }else if (Command_char == 's' ){
+           if (msgflg==0){
+               UART_puts("Start a program ! \r\n");
+               UART_puts("Press [v] to show voltage\r\n");
+               UART_puts("Press [t] to show temperature\r\n");
+               UART_puts("Press [b] to show both voltage and temperature\r\n");
+               msgflg=1;
+           }
+       }else {
+           UART_puts("Invalid command \r\n");
   }
 }
 
@@ -264,12 +253,12 @@ char * outdata(long data,char * unit, char * result ){
 }
 
 int volatgecalc(){
-
+    return ADC_Buffer_Sum() * 5000 / 1024 / ADC_Buffer_Size;
 }
 
 
 int tempcalc(){
-
+    return (int) ((temp * 27069L - 18169625L) >> 16);
 }
 
 
