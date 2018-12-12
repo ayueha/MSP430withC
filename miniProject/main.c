@@ -144,8 +144,6 @@ void main(void) {
     ADC10DTC1 = ADC_Buffer_Size;                //set Buffer size of voltage and Temperature
     ADC10SA = (unsigned int)(ADC_Buffer);       //block start address, cast information to "unsigend int".
     ADC10CTL0 |= ENC+ ADC10SC;                  //ENC = enable conversion, ADC10SC = start conversion ***add
-
-
     TACCTL1 |= CCIE;                            // Compare-mode interrupt
 
 
