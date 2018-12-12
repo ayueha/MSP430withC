@@ -63,14 +63,15 @@
  *
  *
  *******************************************************************************
+ The original program is from Nemeti Laszlo
+ Update my Ayaka Uehara as course project 2018/12/14
  */
 
 #include  "msp430g2553.h"
 #include <stdio.h>
 
 #define LED_RED BIT0                    //LED red variable init bit 0
-#define LED_GRE BIT6
-//#define LEDs    LED_RED + LED_GRE
+#define LED_GRE BIT6                    //LED green variable init bit 6
 #define MAX_ADC_BUFFER_SIZE 32          //Maximum number of transfers for a block
 #define DEFAULT_ADC_BUFFER_SIZE 8       //Default number of transfers for a block
 
@@ -80,7 +81,7 @@ char buffer[10];
 unsigned int ADC_Buffer_Size = DEFAULT_ADC_BUFFER_SIZE; //8
 unsigned int ADC_Buffer[MAX_ADC_BUFFER_SIZE];
 
-volatile char RX_char;
+volatile char RX_char;        //char info
 volatile int temp;            //Temperature information as return value
 
 volatile struct {
@@ -90,7 +91,7 @@ volatile struct {
 volatile unsigned int msgflg;
 
 //function prototypes
-void UART_puts(char * s);                               //
+void UART_puts(char * s);                               //function of UART printing
 char * outdata(long data,char * unit, char * result);   //
 long ADC_Buffer_Sum (void);                             //
 void Process_Command(char Command_char);                //
@@ -138,20 +139,23 @@ void main(void) {
 
     //Initialize LED_RED LED_GRE
     P1DIR |= LED_RED;                           // Direction: output
+    P1DIR |= LED_GRE;
 
     ADC10DTC1 = ADC_Buffer_Size;                //set Buffer size of voltage and Temperature
     ADC10SA = (unsigned int)(ADC_Buffer);       //block start address, cast information to "unsigend int".
-    ADC10CTL0 |= ENC+ ADC10SC;
+    ADC10CTL0 |= ENC+ ADC10SC;                  //ENC = enable conversion, ADC10SC = start conversion ***add
 
 
     TACCTL1 |= CCIE;                            // Compare-mode interrupt
 
+
+    //Welcome message of the program
     UART_puts("MSP430 mini project. Start program, enter [s] \r\n");
 
     while(1) {
         __bis_SR_register(CPUOFF + GIE);        // LPM0 with interrupts enabled
 
-       //if a micro-controller recived a letter from UART
+       //if a micro-controller received a letter from UART
        if (Flags.RX_Received) {
             P1OUT |= LED_RED;                       //if UART info has been inputed from key board
             Flags.RX_Received = 0;                  //Clear Flag
@@ -193,14 +197,12 @@ void Process_Command(char Command_char){
             UART_puts( outdata(IntVoltmV,"mV\r\n",buffer));
             UART_puts( outdata(IntDegC,"C\r\n",buffer));
 
-        }else if (Command_char == 's' ){
-           if (msgflg==0){
+        }else if (Command_char == 's' && msgflg==0){
                UART_puts("Start a program ! \r\n");
                UART_puts("Press [v] to show voltage\r\n");
                UART_puts("Press [t] to show temperature\r\n");
                UART_puts("Press [b] to show both voltage and temperature\r\n");
                msgflg=1;
-           }
        }else {
            UART_puts("Invalid command \r\n");
   }
@@ -258,7 +260,7 @@ int volatgecalc(){
 
 
 int tempcalc(){
-    return (int) ((temp * 27069L - 18169625L) >> 16);
+    return (int) ((temp * 27069L - 18169625L) >> 16);    //bit shift
 }
 
 
